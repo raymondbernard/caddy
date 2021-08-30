@@ -195,12 +195,12 @@ func (app *App) Provision(ctx caddy.Context) error {
 		}
 
 		// set up each listener modifier
+		var hasTLSPlaceholder bool
 		if srv.ListenerWrappersRaw != nil {
 			vals, err := ctx.LoadModule(srv, "ListenerWrappersRaw")
 			if err != nil {
 				return fmt.Errorf("loading listener wrapper modules: %v", err)
 			}
-			var hasTLSPlaceholder bool
 			for i, val := range vals.([]interface{}) {
 				if _, ok := val.(*tlsPlaceholderWrapper); ok {
 					if i == 0 {
@@ -216,13 +216,13 @@ func (app *App) Provision(ctx caddy.Context) error {
 				}
 				srv.listenerWrappers = append(srv.listenerWrappers, val.(caddy.ListenerWrapper))
 			}
-			// if any wrappers were configured but the TLS placeholder wrapper is
-			// absent, prepend it so all defined wrappers come after the TLS
-			// handshake; this simplifies logic when starting the server, since we
-			// can simply assume the TLS placeholder will always be there
-			if !hasTLSPlaceholder && len(srv.listenerWrappers) > 0 {
-				srv.listenerWrappers = append([]caddy.ListenerWrapper{new(tlsPlaceholderWrapper)}, srv.listenerWrappers...)
-			}
+		}
+		// if any wrappers were configured but the TLS placeholder wrapper is
+		// absent, prepend it so all defined wrappers come after the TLS
+		// handshake; this simplifies logic when starting the server, since we
+		// can simply assume the TLS placeholder will always be there
+		if !hasTLSPlaceholder {
+			srv.listenerWrappers = append([]caddy.ListenerWrapper{new(tlsPlaceholderWrapper)}, srv.listenerWrappers...)
 		}
 
 		// pre-compile the primary handler chain, and be sure to wrap it in our
@@ -332,7 +332,7 @@ func (app *App) Start() error {
 				var lnWrapperIdx int
 				for i, lnWrapper := range srv.listenerWrappers {
 					if _, ok := lnWrapper.(*tlsPlaceholderWrapper); ok {
-						lnWrapperIdx = i + 1 // mark the next wrapper's spot
+						lnWrapperIdx = i // mark the TLS placeholder wrapper's spot
 						break
 					}
 					ln = lnWrapper.WrapListener(ln)

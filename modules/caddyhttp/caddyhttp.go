@@ -18,14 +18,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"net"
 	"net/http"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/caddyserver/caddy/v2"
-	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 )
 
 func init() {
@@ -244,23 +242,6 @@ func SanitizedPathJoin(root, reqPath string) string {
 	return path
 }
 
-// tlsPlaceholderWrapper is a no-op listener wrapper that marks
-// where the TLS listener should be in a chain of listener wrappers.
-// It should only be used if another listener wrapper must be placed
-// in front of the TLS handshake.
-type tlsPlaceholderWrapper struct{}
-
-func (tlsPlaceholderWrapper) CaddyModule() caddy.ModuleInfo {
-	return caddy.ModuleInfo{
-		ID:  "caddy.listeners.tls",
-		New: func() caddy.Module { return new(tlsPlaceholderWrapper) },
-	}
-}
-
-func (tlsPlaceholderWrapper) WrapListener(ln net.Listener) net.Listener { return ln }
-
-func (tlsPlaceholderWrapper) UnmarshalCaddyfile(d *caddyfile.Dispenser) error { return nil }
-
 const (
 	// DefaultHTTPPort is the default port for HTTP.
 	DefaultHTTPPort = 80
@@ -270,7 +251,3 @@ const (
 )
 
 const separator = string(filepath.Separator)
-
-// Interface guard
-var _ caddy.ListenerWrapper = (*tlsPlaceholderWrapper)(nil)
-var _ caddyfile.Unmarshaler = (*tlsPlaceholderWrapper)(nil)
